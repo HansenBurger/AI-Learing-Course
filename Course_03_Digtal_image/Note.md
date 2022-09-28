@@ -13,7 +13,7 @@
 3. 屏幕尺寸: 对角线长度
 4. 被错误用作衡量图像内像素点的数量
 
-是一个密度单位
+分辨率是一个密度单位
 
 ### 1.3 RGB
 
@@ -34,9 +34,7 @@ RGB颜色模型就是三维直角坐标系颜色系统中一个单位正方体
 ### 1.5 通道
 
 1. 单通道: 一个像素一个数值，只能表示灰度(二值图&灰度图)
-
 2. 三通道: RGB，图像分为红绿蓝三个通道，表示彩色
-
 3. 四通道: RGBA，加入alpha表示透明度，alpha=0全透明 (与底色和多多层和合成有关,png)
 
 一个通道表示一组数据(多张纸叠加)
@@ -47,7 +45,7 @@ RGB颜色模型就是三维直角坐标系颜色系统中一个单位正方体
 
 ### 1.7 RGB转Gray
 
-三通道转单通道
+三通道转单通道:
 
 1. 浮点算法: Gray=R0.3 + G0.59 + B0.11 (肉眼对绿色更加敏感，实验得到的比例)
 2. 整数方法: Gray=(R30+G59+B11)/100
@@ -57,8 +55,8 @@ RGB颜色模型就是三维直角坐标系颜色系统中一个单位正方体
 
 图像识别将彩色图像灰度化的原因:
 
-    1. 减少计算量
-    2. 图像识别的场景不需要颜色识别
+1. 减少计算量
+2. 图像识别的场景不需要颜色识别
 
 ### 1.8 RGB转浮点数
 
@@ -68,10 +66,10 @@ RGB颜色模型就是三维直角坐标系颜色系统中一个单位正方体
 
 opencv 对于读取进来的图片的通道排列是**BGR**, 而不是主流RGB
 
-    ```python
-        img4 = cv2.imread('1.jpg')
-        img4 = cv2.cvtColor(img4,cv2.COLOR_BGR2RGB)
-    ```
+```python
+img4 = cv2.imread('1.jpg')
+img4 = cv2.cvtColor(img4,cv2.COLOR_BGR2RGB)
+```
 
 ### 1.9 频率 幅值
 
@@ -99,23 +97,23 @@ opencv 对于读取进来的图片的通道排列是**BGR**, 而不是主流RGB
 
 ### 3.2 常见插值方法
 
-1. 最邻近插值
+1.最邻近插值
 
 填充像素所在区域和最近的像素的值(灰度, 通道)一致
 
-    ```python
-        def function(img):
-        height,width,channels =img.shape
-        emptyImage=np.zeros((800,800,channels),np.uint8)
-        sh=800/height   #缩放的比例
-        sw=800/width
-        for i in range(800):
-            for j in range(800):
-                x=int(i/sh) #取整来看插入像素和原图的像素一致
-                y=int(j/sw)
-                emptyImage[i,j]=img[x,y]
-        return emptyImage
-    ```
+```python
+def function(img):
+    height,width,channels =img.shape
+    emptyImage=np.zeros((800,800,channels),np.uint8)
+    sh=800/height   #缩放的比例
+    sw=800/width
+    for i in range(800):
+        for j in range(800):
+            x=int(i/sh) #取整来看插入像素和原图的像素一致
+            y=int(j/sw)
+            emptyImage[i,j]=img[x,y]
+    return emptyImage
+```
 
 图像放大成800*800的比例(python向下取整)
 
@@ -177,6 +175,61 @@ conda install -c conda-forge opencv
 5. dst(x,y) = H'(src(x,y))
 
 均衡化后: 对比度更高
+
+### 8.5 公式推导
+
+1.对输入图像像素p找到对应的输出图像像素q(**输入和输出像素总量相等**)
+
+累加直方图公式(左右像素灰度总量相等):
+
+$$
+\begin{equation}
+\sum_{k=0}^phist_{input}(k)=\sum_{k=0}^qhist_{iout}(k)
+\end{equation}
+$$
+
+其中 $p\in[0,255]$, $q\in[0,255]$, hist是对应灰度下像素的个数的分布函数
+
+> **备注:**
+    我的理解，直方图均衡化是在找每个像素灰度对应的映射。即，对于灰度p，从0到p在灰度直方图上的累计面积应该和S相同，在像素个数和灰度已知的情况下，就可以求出p对应的q。又因为整体上$hist_{out}$可以视作定值，就有后续的公式带入。
+
+![hist_graph_explaination](https://pic1.imgdb.cn/item/6334397416f2c2beb14ed743.png)
+
+2.其中，**输出**图像每个灰度级的个数(像素平均分布到每个灰度上):
+
+$$
+\begin{equation}
+hist_{out}(k) \approx \frac{H\times W}{256},k\in[0,255]
+\end{equation}
+$$
+
+3.代入累加直方图公式:
+
+$$
+\begin{equation}
+\sum_{k=0}^phist_{input}(k)\approx(q+1)\frac{H\times W}{256},k\in[0,255]
+\end{equation}
+$$
+
+可以得到q
+
+$$
+\begin{equation}
+q\approx \frac{\sum_{k=0}^phist_{input}(k)}{H\times W}\times 256  -1 ,k\in[0,255]
+\end{equation}
+$$
+
+### 8.6 流程推导(表)
+
+将偏暗的灰度图转换成在灰度上均匀的图
+
+![hist_euqalization_table](https://pic1.imgdb.cn/item/6334397416f2c2beb14ed740.png)
+
+### 8.7 直方图均衡后出现过白情况
+
+出现直方图均衡后整体偏白：**原始图的0像素值过多**，累加过程中导致1-255的像素的映射值都被放大了
+
+处理方法：避开0像素值，从1像素值开始累加计算
 
 ## 九、滤波
 

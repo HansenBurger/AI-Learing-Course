@@ -4,3 +4,7 @@
 
 #Ignore setting file
 *.vscode
+
+#Igore all figure
+*.png
+*.jpg
