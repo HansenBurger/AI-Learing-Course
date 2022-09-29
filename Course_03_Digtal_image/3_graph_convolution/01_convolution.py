@@ -43,7 +43,7 @@ class Convolution(Basic):
         '''
         h_new = np.around((h - f + 2 * self.__p_st) / self.__s_st + 1)
         w_new = np.around((w - f + 2 * self.__p_st) / self.__s_st + 1)
-        matrix_new = np.zeros(shape=(h_new, w_new, c), dtype=np.int8)
+        matrix_new = np.zeros(shape=(h_new, w_new), dtype=np.int8)
 
         return matrix_new
 
