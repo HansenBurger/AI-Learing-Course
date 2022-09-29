@@ -57,24 +57,9 @@ class Equilibrium(ImageBasic):
         self.__InitDistribution()
         self.__MapCalculation()
 
-class HistEqualization_by_interface(ImageBasic):
-    def __init__(self, img_loc:str) -> None:
-        super().__init__()
-        self.__img = cv2.imread(img_loc)
-        _, _, self.__c = self.__img.shape
-
-    @property
-    def img(self):
-        return self.__img
-
-    def HistBalance(self):
-        for c in range(self.__c):
-            src_c = self.__img[:, :, c]
-            dst_c = cv2.equalizeHist(src_c) # only use in single channle
-            self.__img[:, :, c] = dst_c
 
 
-class HistEqualization_by_formular(ImageBasic):
+class HistEqualization(ImageBasic):
     def __init__(self, img_loc:str):
         super().__init__()
         self.__img = cv2.imread(img_loc)
@@ -112,8 +97,7 @@ class HistEqualization_by_formular(ImageBasic):
 
 def main():
     sns.set_style('whitegrid')
-    # img_process = HistEqualization_by_formular(img_loc)
-    img_process = HistEqualization_by_interface(img_loc)
+    img_process = HistEqualization(img_loc)
     color_order = ['b', 'g', 'r']
 
     fig_0, (ax_0, ax_1) = plt.subplots(1, 2)
