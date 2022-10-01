@@ -16,6 +16,29 @@ k_laplace_1 = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]])
 k_soble_0 = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
 k_soble_1 = np.array([[-1, -2, -1], [0, 0, 0], [1, 2, 1]])
 
+test_volume = np.array([[[1, 1, 0], [0, 0, 2], [2, 1, 2], [2, 0, 0], [2, 1,
+                                                                      0]],
+                        [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 1,
+                                                                      1]],
+                        [[2, 0, 1], [0, 0, 1], [2, 2, 2], [2, 0, 0], [2, 0,
+                                                                      2]],
+                        [[1, 2, 2], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0,
+                                                                      0]],
+                        [[1, 0, 0], [0, 0, 1], [0, 1, 1], [2, 0, 0], [1, 0,
+                                                                      1]]])
+
+filter_0_w = np.array([[[1, -1, 1], [0, -1, 1], [0, 0, 0]],
+                       [[-1, -1, 0], [0, -1, -1], [0, 1, 1]],
+                       [[0, 1, 1], [-1, 0, 1], [1, 0, 1]]])
+
+filter_0_b = 1
+
+filter_1_w = np.array([[[1, 0, 0], [-1, 1, -1], [0, -1, 0]],
+                       [[-1, 0, 1], [0, 0, 1], [0, 0, -1]],
+                       [[0, 0, -1], [1, 1, 0], [-1, 1, 1]]])
+
+filter_1_b = 0
+
 
 class Basic:
 
@@ -95,7 +118,7 @@ class ImageFiltering(Basic):
     def __init__(self, img_loc: str) -> None:
         super().__init__()
         self.__img = cv2.imread(img_loc)
-        self.__h, self.__w, self.__c = self.__img.shape  # gray img still got multi channel
+        _, _, self.__c = self.__img.shape  # gray img still got multi channel
 
     def __ImgFilt(self,
                   filter_: np.ndarray,
@@ -136,8 +159,16 @@ class ImageFiltering(Basic):
 
 class ConvCalculation(Basic):
 
-    def __init__(self) -> None:
+    def __init__(self, matrix_in: np.ndarray, p_st: int, s_st: int) -> None:
         super().__init__()
+        self.__m_in = matrix_in
+        self.__con_ = Convolution(p_st, s_st)
+
+    def Calculation(self, w_in: np.ndarray, b_in: np.ndarray):
+        if len(self.__m_in.shape) < 3:
+            return self.__con_.ConvFilt(self.__m_in, w_in) + b_in
+        else:
+            pass
 
 
 def ImgProcessDisplay(img: np.ndarray, ax: any, title: str):
