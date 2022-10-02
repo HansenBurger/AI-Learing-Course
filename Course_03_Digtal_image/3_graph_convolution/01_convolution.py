@@ -198,7 +198,7 @@ def ImgProcessDisplay(img: np.ndarray, ax: any, title: str):
 def main():
     filt_p = ImageFiltering(img_loc)
     fig_0, ((ax_0_0, ax_0_1, ax_0_2), (ax_1_0, ax_1_1,
-                                       ax_1_2)) = plt.subplots(2, 3)
+                                       ax_1_2)) = plt.subplots(2, 3, figsize=(12, 8))
     fig_0.suptitle("Image Filtering")
 
     ImgProcessDisplay(filt_p.ImgItself(), ax_0_0, 'Origin')
