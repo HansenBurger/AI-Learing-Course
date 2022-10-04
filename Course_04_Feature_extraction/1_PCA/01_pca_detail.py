@@ -1,4 +1,3 @@
-from cProfile import label
 import numpy as np
 import pandas as pd
 from sklearn import datasets
@@ -60,7 +59,7 @@ class CPCA(Basic):
         :return: data_new: data matrix after PCA
         :return: ita_k: percentage of QOI 
         '''
-        self.__CovMatrix_noncentrial()
+        self.__CovMatrix_centrial()
         eig_v, eig_m = np.linalg.eig(self.__cov_matrix)
         data_new = self.__data_matrix.dot(eig_m[:, 0:k])
         ita_k = np.sum(eig_v[0:k]) / np.sum(eig_v) * 100
