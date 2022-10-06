@@ -11,7 +11,6 @@ def PCA_sklearn(d_m: np.ndarray, k: int) -> list:
     :param: k: scale set (k <= col_n)
     '''
     pca_st = decomposition.PCA(k)
-    pca_st.fit(d_m)
     d_new = pca_st.fit_transform(d_m)
     ita_k = pca_st.explained_variance_ratio_[0]
     return d_new, ita_k

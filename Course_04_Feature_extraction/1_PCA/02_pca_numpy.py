@@ -14,6 +14,8 @@ def PCA_numpy(d_m: np.ndarray, k: int) -> list:
     d_m_z = d_m - d_m.mean(axis=0)
     cov_m = 1 / r_n * d_m_z.T.dot(d_m_z)
     eig_v, eig_m = np.linalg.eig(cov_m)
+    eig_order = np.flip(np.argsort(eig_v))
+    eig_v, eig_m = eig_v[eig_order], eig_m[:, eig_order]
     d_new = d_m.dot(eig_m[:, 0:k])
     ita_k = np.sum(eig_v[0:k]) / np.sum(eig_v) * 100
     return d_new, ita_k

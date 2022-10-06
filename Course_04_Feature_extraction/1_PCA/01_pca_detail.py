@@ -51,6 +51,17 @@ class CPCA(Basic):
                                             self.__n)
         self.__cov_matrix = cov_m
 
+    def __EigExtra(self):
+        '''
+        Calculate eigenvalues and eigenvectors (descending order)
+        :return: eig_v: eigenvalues
+        :return: eig_m: eigenvectors
+        '''
+        eig_v, eig_m = np.linalg.eig(self.__cov_matrix)
+        eig_order = np.flip(np.argsort(eig_v))
+        eig_v, eig_m = eig_v[eig_order], eig_m[:, eig_order]
+        return eig_v, eig_m
+
     def PCA_QOI(self, k: int) -> list:
         '''
         Extracting the data matrix with reduced dimensionality k 
@@ -60,7 +71,7 @@ class CPCA(Basic):
         :return: ita_k: percentage of QOI 
         '''
         self.__CovMatrix_centrial()
-        eig_v, eig_m = np.linalg.eig(self.__cov_matrix)
+        eig_v, eig_m = self.__EigExtra()
         data_new = self.__data_matrix.dot(eig_m[:, 0:k])
         ita_k = np.sum(eig_v[0:k]) / np.sum(eig_v) * 100
         return data_new, ita_k
