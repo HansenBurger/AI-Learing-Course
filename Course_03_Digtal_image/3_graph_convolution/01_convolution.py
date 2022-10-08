@@ -118,7 +118,7 @@ class ImageFiltering(Basic):
     def __init__(self, img_loc: str) -> None:
         super().__init__()
         self.__img = cv2.imread(img_loc)
-        _, _, self.__c = self.__img.shape  # gray img still got multiple channel
+        self.__h, self.__w, self.__c = self.__img.shape  # gray img still got multiple channel
 
     def __ImgFilt(self,
                   filter_: np.ndarray,
@@ -132,28 +132,42 @@ class ImageFiltering(Basic):
         img_new = np.dstack(img_new_s)
         return img_new
 
+    def __ThresholdCut(self, img: np.ndarray):
+        min_overflow = lambda x: x if x.any() >= 0 else 0
+        max_overflow = lambda x: x if x.any() <= 255 else 255
+        img_ = img.copy()
+        img_ = min_overflow(img_)
+        img_ = max_overflow(img_)
+        return img_
+
     def ImgItself(self, p_st: int = 1, s_st: int = 1):
         img_ = self.__ImgFilt(k_itself, p_st, s_st)
+        img_ = self.__ThresholdCut(img_)
         return img_
 
     def ImgSmooth_mean(self, p_st: int = 1, s_st: int = 1):
         img_ = self.__ImgFilt(k_mean, p_st, s_st)
+        img_ = self.__ThresholdCut(img_)
         return img_
 
     def ImgSmooth_gauss(self, p_st: int = 1, s_st: int = 1):
         img_ = self.__ImgFilt(k_gauss, p_st, s_st)
+        img_ = self.__ThresholdCut(img_)
         return img_
 
     def ImgSharpening(self, p_st: int = 1, s_st: int = 1):
         img_ = self.__ImgFilt(k_laplace_0, p_st, s_st)
+        img_ = self.__ThresholdCut(img_)
         return img_
 
     def ImgSoble_hor(self, p_st: int = 1, s_st: int = 1):
         img_ = self.__ImgFilt(k_soble_0, p_st, s_st)
+        img_ = self.__ThresholdCut(img_)
         return img_
 
     def ImgSoble_ver(self, p_st: int = 1, s_st: int = 1):
         img_ = self.__ImgFilt(k_soble_1, p_st, s_st)
+        img_ = self.__ThresholdCut(img_)
         return img_
 
 
@@ -198,7 +212,9 @@ def ImgProcessDisplay(img: np.ndarray, ax: any, title: str):
 def main():
     filt_p = ImageFiltering(img_loc)
     fig_0, ((ax_0_0, ax_0_1, ax_0_2), (ax_1_0, ax_1_1,
-                                       ax_1_2)) = plt.subplots(2, 3, figsize=(12, 8))
+                                       ax_1_2)) = plt.subplots(2,
+                                                               3,
+                                                               figsize=(12, 8))
     fig_0.suptitle("Image Filtering")
 
     ImgProcessDisplay(filt_p.ImgItself(), ax_0_0, 'Origin')
