@@ -113,9 +113,74 @@ $$
 
 **需要注意**: 平滑过程中会去除噪声也会降低边缘(二者同源导致)
 
-### 3.3 水平垂直检测
+### 3.3 边缘检测(梯度计算)
 
-应用sobel算子(水平，竖直)，原理同上
+边缘检测中还是依据像素对应梯度的强度，梯度越大，则说明变化越剧烈，越可能是边缘，对于构成灰度图的离散函数 $f(x, y)$，梯度的表示方式如下:
+
+1. 梯度的向量:
+$$
+\begin{equation}
+\nabla f(x, y) =
+\begin{bmatrix}
+\frac{\delta f(x,y)}{\delta x} \\
+\frac{\delta f(x,y)}{\delta y}
+\end{bmatrix}
+=
+\begin{bmatrix}
+f_x\\
+f_y
+\end{bmatrix}
+\end{equation}
+$$
+
+2. 梯度的大小:
+$$
+\begin{equation}
+|\nabla f(x, y)| = \sqrt{f_x^2+f_y^2}
+\end{equation}
+$$
+
+3. 梯度的方向:
+$$
+\begin{equation}
+\theta(x,y) = \arctan{\frac{f_y}{f_x}}
+\end{equation}
+$$
+
+而**图像梯度的计算中通常使用特定的算子计算卷积**，常用的有sobel算子，其中提取x方向的算子( $S_x$ )，提取y方向的算子( $S_y$ )如下所示:
+
+$$
+S_x =
+\begin{bmatrix}
+   -1 & 0 & 1 \\
+   -2 & 0 & 2 \\
+   -1 & 0 & 1
+\end{bmatrix}
+,S_y =
+\begin{bmatrix}
+   -1 & -2 & -1 \\
+   0 & 0 & 0 \\
+   1 & 2 & 1
+\end{bmatrix}
+$$
+
+假设当前像素和他周围区域的矩阵为 $I$，将算子通过卷积带入公式 *(4)* 和公式 *(5)*，像素的梯度和对应的方向就可以如下计算:
+
+1. 梯度的大小(算子卷积)
+$$
+\begin{equation}
+|\nabla S| = \sqrt{(S_x*I)^2+(S_y*I)^2}
+\end{equation}
+$$
+
+2. 梯度的方向(算子卷积)
+$$
+\begin{equation}
+\theta S = \arctan{\frac{S_y*I}{S_x*I}}
+\end{equation}
+$$
+
+得到梯度和梯度方向后，如果直接输出灰度后也能得到边界检测结果，但不准确，因此需要需要NMS找到最佳的边界。
 
 ### 3.4 非极大值抑制(NMS)
 
@@ -140,9 +205,19 @@ NMS处理示意图:
 
 其中橙色角度代表处理像素的梯度方向，找到梯度方向相邻的像素的最大值，对于 $\theta$ 介于图上八个区域内的角，则存在虚拟的像素值 $Tmp_1$，$Tmp_2$，求解虚拟像素值使用插值(最近邻，线性，双线性)。
 
-使用线性插值的计算示例(在数组存储中):
+使用**线性插值**的计算示例(在数组存储中):
 
-![NMS_calculate](https://pic1.imgdb.cn/item/6341247016f2c2beb16aa974.png)
+![NMS_inter](https://pic1.imgdb.cn/item/6342baf816f2c2beb1e4bec0.png)
+
+根据图中的点连线，可以分成8个区域(如图中色块划分)，假定0-45°的区域为区域1，那么上图的梯度方向经过区域1和区域5，又区域之间两两对应，计算C的最近邻坐标共有四种可能性(1-5，2-6，3-7，4-8)，只要找到对应区域的四个相邻点，并计算对应的伪坐标和其梯度，就能进行比较判断。
+
+具体四种组合以及其对应插值公式如下:
+
+![linear_interp](https://pic1.imgdb.cn/item/6342bcb416f2c2beb1e8ca60.png)
+
+除线性插值外，也可以使用最近邻的方法进行计算，他对应的分区和角度也会不同，下图为最近邻替代的示意图:
+
+![NMS_neighbor](https://i0.wp.com/theailearner.com/wp-content/uploads/2019/05/Grad_direc-2.png?resize=625%2C299&ssl=1)
 
 ### 3.5 双阈值检测
 
