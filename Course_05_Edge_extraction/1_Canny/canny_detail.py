@@ -32,7 +32,7 @@ class Canny(Basic):
 
     def __init__(self,
                  low_limit_st: int = 0,
-                 high_limit_st: int = 100,
+                 high_limit_st: int = 0,
                  smooth_kernal: np.ndarray = Gauss_kernal,
                  hor_detect_kernal: np.ndarray = Sobel_kernal_s[0],
                  ver_detect_kernal: np.ndarray = Sobel_kernal_s[1]) -> None:
@@ -144,6 +144,11 @@ class Canny(Basic):
         '''
         img_out = img.copy()
 
+        # Use the defalt threshold by gradient
+        if self.__l_th == 0 and self.__h_th == 0:
+            self.__l_th = img.mean() * 0.8
+            self.__h_th = self.__l_th * 8
+
         for i in range(1, img_out.shape[0] - 1):
             for j in range(1, img_out.shape[1] - 1):
                 if img[i, j] <= self.__l_th:
@@ -160,17 +165,50 @@ class Canny(Basic):
         return img_out
 
     def EdgeDetecting(self, img_loc: str) -> np.ndarray:
-        img_ = self.__ValidationGraying(img_loc)
-        img_ = self.__ImgSmoothing(img_)
-        g_v, g_t = self.__HorVerDetection(img_)
-        img_ = self.__NonMaxSuppression(g_v, g_t)
-        img_ = self.__TwoThresholdDetection(img_)
-        return img_
+        img_gray = self.__ValidationGraying(img_loc)
+        img_smooth = self.__ImgSmoothing(img_gray)
+        img_g_v, img_g_t = self.__HorVerDetection(img_smooth)
+        img_nms = self.__NonMaxSuppression(img_g_v, img_g_t)
+        img_out = self.__TwoThresholdDetection(img_nms)
+        return {
+            'gray': img_gray,
+            'smooth': img_smooth,
+            'gradient': img_g_v,
+            'nms': img_nms,
+            'final': img_out
+        }
 
 
 if __name__ == '__main__':
-    canny_p = Canny(10, 30)
-    img_ = canny_p.EdgeDetecting(lenna_loc)
-    plt.axis('off')
-    plt.imshow(img_, cmap='gray')
+    canny_p = Canny()
+    canny_r = canny_p.EdgeDetecting(lenna_loc)
+
+    fig, ax_s = plt.subplots(2, 3, figsize=(12, 8))
+
+    ax_s[0, 0].axis('off')
+    ax_s[0, 0].imshow(cv2.cvtColor(cv2.imread(lenna_loc), cv2.COLOR_BGR2RGB))
+    ax_s[0, 0].set_title('Origin')
+
+    ax_s[0, 1].axis('off')
+    ax_s[0, 1].imshow(canny_r['gray'], cmap='gray')
+    ax_s[0, 1].set_title('Gray')
+
+    ax_s[0, 2].axis('off')
+    ax_s[0, 2].imshow(canny_r['smooth'], cmap='gray')
+    ax_s[0, 2].set_title('Smooth')
+
+    ax_s[1, 0].axis('off')
+    ax_s[1, 0].imshow(canny_r['gradient'], cmap='gray')
+    ax_s[1, 0].set_title('Gradient')
+
+    ax_s[1, 1].axis('off')
+    ax_s[1, 1].imshow(canny_r['nms'], cmap='gray')
+    ax_s[1, 1].set_title('Non-max Suppression')
+
+    ax_s[1, 2].axis('off')
+    ax_s[1, 2].imshow(canny_r['final'], cmap='gray')
+    ax_s[1, 2].set_title('Two threshold')
+
+    fig.tight_layout()
     plt.show()
+    plt.close()
