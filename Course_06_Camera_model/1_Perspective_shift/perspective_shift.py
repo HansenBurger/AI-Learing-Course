@@ -53,7 +53,7 @@ class PerspectTrans(Basic):
 
         return trans_m
 
-    def Transmition_I2O(self, p_in: tuple) -> list:
+    def Transmition_I2O(self, src: tuple) -> list:
         '''
         Get the coordinate value of the point (input to output)
         :param: p_in: point's input coordinate
@@ -67,20 +67,20 @@ class PerspectTrans(Basic):
 
         return p_out.tolist()
 
-    def Transmition_O2I(self, p_out: tuple) -> tuple:
+    def Transmition_O2I(self, dst: tuple) -> tuple:
         '''
         Get the coordinate value of the point (output to input)
         :param: p_out: point's output coordinate
         :return: p_in: point's coordinate before transmition
         '''
-        p_out = np.append(np.array(p_out), 1)
-        p_out = p_out.reshape((3, 1))
-        p_in = linalg.inv(np.mat(self.__trans_m)) * p_out
-        p_in = np.array(p_in).astype(np.int32).reshape((1, 3))[0]
-        p_in = p_in - p_in[-1]
-        p_in = [int(i) for i in p_in.ravel()[0:2]]
+        dst = np.append(np.array(dst), 1)
+        dst = dst.reshape((3, 1))
+        src = linalg.inv(np.mat(self.__trans_m)) * dst
+        src = np.array(src) / np.array(src)[-1]
+        src = np.round(src).astype(np.int32).reshape((1, 3))[0]
+        src = [i for i in src.ravel()[0:2]]
 
-        return p_in
+        return src
 
 
 class DistortCorrect(Basic):
@@ -90,7 +90,7 @@ class DistortCorrect(Basic):
         self.__img_r = cv2.imread(img_loc)
         self.__img_p = self.__PreProcessing()
         self.__cnt, self.__vtx = self.__ContourDetection()
-        self.__trans_m = self.__GenTransM()
+        self.__img_t = self.__PerspectiveTrans()
 
     def __PreProcessing(self) -> np.ndarray:
         '''
@@ -158,40 +158,40 @@ class DistortCorrect(Basic):
 
         return cnt_outer, cnt_vertex
 
-    def __GenTransM(self):
+    def __PerspectiveTrans(self) -> list:
         '''
-        
+        Generate perspective transformation results
+        :return: img_dst: image for perspective transformation
         '''
         dist_c = lambda l_0, l_1, x: linalg.norm(l_0[x] - l_1[x])
-        p_v, p_v_r, = self.__vtx, np.roll(self.__vtx, 2)
-        p_l_s = list(dist_c(p_v, p_v_r, i) for i in range(4))
-        side_0 = round(np.mean([p_l_s[0], p_l_s[2]]))
-        side_1 = round(np.mean([p_l_s[1], p_l_s[3]]))
-        q_v = np.array([[0, 0], [0, side_1], [side_0, side_1], [side_0, 0]])
+        src, src_r, = self.__vtx, np.roll(self.__vtx, 2)
+        src_side_s = list(dist_c(src, src_r, i) for i in range(4))
+        src_side_0 = round(np.mean([src_side_s[0], src_side_s[2]]))
+        src_side_1 = round(np.mean([src_side_s[1], src_side_s[3]]))
 
-        img_trans = np.zeros(shape=(side_1, side_0, self.__img_r.shape[2]),
-                             dtype=self.__img_r.dtype)
-        trans_p = PerspectTrans(p_v.reshape(4, 2), q_v.reshape(4, 2))
+        # approxPolyDP output coordinates satisfy the counterclockwise distribution
+        dst = np.array([[0, 0], [0, src_side_1], [src_side_0, src_side_1],
+                        [src_side_0, 0]])
 
-        return trans_p.trans_m
-        # p_i_max = self.__img_r.shape[0] - 1
-        # p_j_max = self.__img_r.shape[1] - 1
+        trans_p = PerspectTrans(src.reshape(4, 2), dst.reshape(4, 2))
+        img_dst = cv2.warpPerspective(self.__img_r, trans_p.trans_m,
+                                      (src_side_0, src_side_1))
 
-        # for i in range(img_trans.shape[0]):
-        #     for j in range(img_trans.shape[1]):
-        #         p_i, p_j = trans_p.Transmition_O2I((i, j))
-        #         p_i = p_i_max if p_i > p_i_max else p_i
-        #         p_j = p_j_max if p_j > p_j_max else p_j
-        #         img_trans[i, j, :] = self.__img_r[p_i, p_j, :]
+        return img_dst
 
-        # img_2 = cv2.warpPerspective(self.__img_r, trans_p.trans_m, (347, 488))
-
-        # cv2.imshow('img_1', img_trans)
-        # cv2.imshow('img_2', img_2)
-        # cv2.waitKey(0)
-
-        return img_trans
+    def Display(self) -> None:
+        '''
+        Display image boundaries and perspective transformation results
+        '''
+        for i in range(self.__vtx.shape[0]):
+            vtx_coord = tuple(self.__vtx[i, 0, :])
+            cv2.circle(self.__img_r, vtx_coord, 10, (255, 0, 0), -1)
+        cv2.drawContours(self.__img_r, self.__cnt, -1, (0, 255, 0), 5)
+        cv2.imshow('OriginImage', self.__img_r)
+        cv2.imshow('TransImage', self.__img_t)
+        cv2.waitKey(0)
 
 
 if __name__ == "__main__":
     main_p = DistortCorrect(DISTORT_IMG)
+    main_p.Display()
