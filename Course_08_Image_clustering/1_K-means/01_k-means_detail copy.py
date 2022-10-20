@@ -1,6 +1,9 @@
 import cv2
 import numpy as np
+import pandas as pd
 from numpy import linalg
+from sklearn import datasets, decomposition
+from matplotlib import pyplot as plt
 
 lenna_loc = 'Course_03_Digtal_image\StaticStorage\lenna.png'
 
@@ -22,13 +25,23 @@ class K_Means(Basic):
         self.__st_r = stop_rounds_st
         self.__st_t = tolerance_st
         self.__p_st = None
+        self.__p_lb = None
+
+    @property
+    def p_lb(self):
+        return self.__p_lb
 
     def __GetPartial(self, arr_i: np.ndarray):
+        '''
+        Get partial dataset according to index set in
+        :param: arr_i: multi-D index
+        :return: arr_p: partial dataset
+        '''
         if len(self.__p_st.shape) == 1:
-            arr_ = self.__p_st[arr_i]
+            arr_p = self.__p_st[arr_i]
         else:
-            arr_ = self.__p_st[arr_i, :]
-        return arr_
+            arr_p = self.__p_st[arr_i, :]
+        return arr_p
 
     def __RandBarycenter(self) -> np.ndarray:
         '''
@@ -52,7 +65,8 @@ class K_Means(Basic):
 
         for i in range(n_sample):
             for j in range(n_group):
-                euc_dist[i, j] = linalg.norm(p_c[j] - self.__p_st[i])
+                bias = p_c[j] - self.__p_st[i]
+                euc_dist[i, j] = linalg.norm(bias)
 
         dist_map = []
         for i in range(n_sample):
@@ -98,13 +112,18 @@ class K_Means(Basic):
         return p_c
 
     def fit(self, data_set: np.ndarray) -> np.ndarray:
+        '''
+        Training with samples
+        :param: data_set: data array in 2-D (sample, feature)
+        '''
         n_round = self.__st_r
 
         self.__p_st = data_set.copy()
+        self.__p_lb = np.zeros(data_set.shape[0], dtype=np.int32)
         p_c = self.__RandBarycenter()
 
         while (n_round):
-            p_g, _ = self.__EuclideanDist(p_c)
+            p_g, p_g_i = self.__EuclideanDist(p_c)
             p_c_new = self.__GenBarycenter(p_g)
             p_c_error = np.square(p_c - p_c_new).mean()
 
@@ -114,16 +133,54 @@ class K_Means(Basic):
                 p_c = p_c_new
                 n_round -= 1
 
-        self.__p_st = None
-        self.__p_c = p_c
-
-        return p_g
+        for i in range(self.__k):
+            self.__p_lb[p_g_i[i]] = i
 
 
-img = cv2.imread(lenna_loc)
-gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+def PCA_sklearn(d_m: np.ndarray, k: int) -> list:
+    '''
+    Downscaling the data matrix to k
+    :param: d_m: data matrix(row_n: sample, col_n: feature)
+    :param: k: scale set (k <= col_n)
+    '''
+    pca_st = decomposition.PCA(k)
+    d_new = pca_st.fit_transform(d_m)
+    ita_k = pca_st.explained_variance_ratio_[0]
+    return d_new, ita_k
 
-# arr = np.array([[0, 0], [1, 2], [3, 1], [8, 8], [9, 10], [10, 7]])
-main_p = K_Means(4)
-cluster = main_p.fit(gray.ravel())
-a = 1
+
+def main():
+    iris = datasets.load_iris()
+    cluster_p = K_Means(3)
+    cluster_p.fit(iris.data)
+    iris_label = cluster_p.p_lb
+    label_error = np.square(iris_label - iris.target).mean()
+    iris_new, iris_qoi = PCA_sklearn(iris.data, 2)
+    iris_df = pd.DataFrame(iris_new, columns=['x', 'y'])
+    iris_df['tag'] = iris_label
+    color_st_s = [{
+        'c': 'blue',
+        'marker': 'o'
+    }, {
+        'c': 'red',
+        'marker': 's'
+    }, {
+        'c': 'green',
+        'marker': '^'
+    }]
+
+    fig, ax = plt.subplots(1, 1, figsize=(9, 9))
+    fig.suptitle('Iris label error: {0}'.format(round(label_error, 2)))
+    for i in range(len(color_st_s)):
+        cate = np.unique(iris.target)[i]
+        iris_cate = iris_df.loc[iris_df['tag'] == cate]
+        ax.scatter(iris_cate['x'], iris_cate['y'], label=cate, **color_st_s[i])
+    ax.legend()
+    fig.tight_layout()
+
+    plt.show()
+    plt.close()
+
+
+if __name__ == "__main__":
+    main()
