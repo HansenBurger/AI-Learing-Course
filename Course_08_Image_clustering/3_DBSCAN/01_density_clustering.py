@@ -1,14 +1,8 @@
 import numpy as np
 import pandas as pd
-from sklearn import cluster
+from sklearn.cluster import DBSCAN
 from sklearn import datasets, decomposition
 from matplotlib import pyplot as plt
-
-
-def K_Means(data_st: np.ndarray, k_st: int):
-    km_cluster = cluster.KMeans(k_st)
-    km_cluster.fit(data_st)
-    return km_cluster.labels_
 
 
 def PCA_sklearn(d_m: np.ndarray, k: int) -> list:
@@ -25,7 +19,8 @@ def PCA_sklearn(d_m: np.ndarray, k: int) -> list:
 
 def main():
     iris = datasets.load_iris()
-    iris_label = K_Means(iris.data, 3)
+    db_cluste = DBSCAN(eps=0.4, min_samples=9).fit(iris.data)
+    iris_label = db_cluste.labels_
     label_error = np.square(iris_label - iris.target).mean()
     iris_new, iris_qoi = PCA_sklearn(iris.data, 2)
     iris_df = pd.DataFrame(iris_new, columns=['x', 'y'])
