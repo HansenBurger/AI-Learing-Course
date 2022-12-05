@@ -21,12 +21,10 @@ class RANSAC(Basic):
     def __init__(self,
                  random_size: int,
                  exp_times: int,
-                 inner_differ: float = 0.5,
-                 inner_ratio: float = 1.0) -> None:
+                 inner_differ: float = 0.5) -> None:
         super().__init__()
         self.__n = random_size
         self.__k = exp_times
-        self.__w = inner_ratio
         self.__th = inner_differ
 
     def __group_split(self, x: np.ndarray, y: np.ndarray):
@@ -36,9 +34,42 @@ class RANSAC(Basic):
         outer = np.array([x[outer_gp_i], y[outer_gp_i]])
         return inner, outer
 
-    def main(self, x: np.ndarray, y: np.ndarray):
+    def __fit_model(self, func_st: any, **kwargs):
+        fit_param = func_st(**kwargs)
+        fit_func = np.poly1d(fit_param)
+        return fit_func, fit_param
+
+    def __fit_perform(self, y_o: np.ndarray, y_n: np.ndarray):
+        count = 0
+        for i in range(y_o.shape[0]):
+            #TODO Differentiation optimization
+            diff = np.abs(y_o[i] - y_n[i])
+            if diff > self.__th:
+                continue
+            else:
+                count += 1
+        return count
+
+    def main(self, x: np.ndarray, y: np.ndarray, m: int):
         inner, outer = self.__group_split(x, y)
-        a = 1
+        fit_round, in_size = self.__k, 0
+        fit_param_s, fit_size_s = [], []
+
+        while (fit_round):
+            fit_tmp, param_tmp = self.__fit_model(least_squares,
+                                                  x=inner[0],
+                                                  y=inner[1],
+                                                  m=m)
+            out_tmp = fit_tmp(outer[0])
+            in_size_i = self.__fit_perform(outer[1], out_tmp)
+            fit_param_s.append(param_tmp)
+            fit_size_s.append(in_size_i)
+
+            fit_round -= 1
+
+        fit_param = fit_param_s[np.array(fit_size_s).argmax(axis=0)]
+
+        return np.poly1d(fit_param), fit_param
 
 
 class CoordsGenerator():
@@ -78,21 +109,27 @@ class CoordsGenerator():
 
 
 def main():
-    true_coords = CoordsGenerator(1000, (-1, 3), "basic", k=-0.8, b=3.5)
+    true_coords = CoordsGenerator(800, (-1, 3), "basic", k=-0.9, b=3.5)
     true_coords.add_noise(var=0.1)
-    false_coords = CoordsGenerator(300, (-1, 3), "basic", k=-0.1, b=3.5)
-    false_coords.add_noise(var=0.2)
-    fig, ax = plt.subplots(1, 1, figsize=(8, 8))
-    ax.plot(true_coords.x, true_coords.y, "ko")
-    ax.plot(false_coords.x, false_coords.y, "ro")
-    fig.tight_layout()
+    false_coords = CoordsGenerator(200, (-1, 3), "basic", k=0, b=3.8)
+    false_coords.add_noise(var=0.5)
 
     x_tot = np.concatenate((true_coords.x, false_coords.x))
     y_tot = np.concatenate((true_coords.y, false_coords.y))
-    ransac = RANSAC(50, 100)
-    ransac.main(x_tot, y_tot)
-    a = 1
-    pass
+    ransac = RANSAC(10, 1000, 0.001)  # threshold must be determined by dataset
+    rs_f, rs_p = ransac.main(x_tot, y_tot, 1)
+    ls_f = np.poly1d(least_squares(x_tot, y_tot, 1))
+
+    fig, ax = plt.subplots(1, 1, figsize=(8, 8))
+    ax.plot(x_tot, y_tot, "ko", label="Samples")
+    ax.plot(x_tot, ls_f(x_tot), "r-", linewidth=5.0, label="LeastSquares")
+    ax.plot(x_tot, rs_f(x_tot), "g-", linewidth=5.0, label="RANSAC")
+    ax.set_title("LeastSquare(R),RANSAC(G)")
+    ax.legend()
+
+    fig.tight_layout()
+    plt.show()
+    plt.close()
 
 
 if __name__ == "__main__":
