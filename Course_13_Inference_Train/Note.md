@@ -286,4 +286,220 @@ Dropout示意图:
 
 层数越深容易导致梯度消失(浅层)
 
-见笔记
+对于如下的一个全连接(FNN)误差逆传播(BP)算法的网络，可以简单的计算其参数优化的过程:
+
+![FNNBP_struct](https://pic.imgdb.cn/item/63908c46b1fccdcd368629d4.png)
+
+1. 第一层为输入层($i_1，i_2$)，接收input，没有权重；
+2. 第二层为隐藏层($h_1，h_2$)，提取特征，输入层到隐藏层间的权重分别为 $w_1, w_2, w_3, w_4$，偏置为 $b_1$；
+3. 第三层为输出层($h_1，h_2$)，接收隐藏层，**并通过BP优化权重**，其权重分别为 $w_5, w_6, w_7, w_8$，偏置为 $b_2$
+
+输入和输出以及偏置设置值为:
+
+| type | value |
+| ---- | ---- |
+| $i_1$ | 0.05 |
+| $i_2$ | 0.10 |
+| $o_1$ | 0.01 |
+| $o_2$ | 0.99 |
+| $b_1$ | 0.35 |
+| $b_2$ | 0.60 |
+
+随机的权重设置值为:
+
+| h-layer | h-w | o-layer | o-w |
+| ---- | ---- | ---- | ---- |
+| $w_1$ | 0.15 | $w_5$ | 0.40 |
+| $w_2$ | 0.20 | $w_6$ | 0.45 |
+| $w_3$ | 0.25 | $w_7$ | 0.50 |
+| $w_4$ | 0.30 | $w_8$ | 0.55 |
+
+具体到其中每一个神经元(neuron)的结构如下:
+
+![neurou_fnn](https://pic1.imgdb.cn/item/639095a6b1fccdcd3695ea71.png)
+
+#### 1) 前向传播
+
+前向传播，主要根据FNN中权重的初始值，从输入到输出，计算出结果。
+
+由神经元结构可隐藏层 $h_1$ 在的输出 $z_{h_1}$ 为:
+
+$$
+\begin{equation}
+z_{h_1} = w_1 * i_1 + w_2 * i_2 + b_1
+\end{equation}
+$$
+
+激活函数为sigmoid，因此易得隐藏层 $h_1$ 的输出 $a_{h_1}$ 为
+
+$$
+\begin{equation}
+a_{h_1} = \frac{1}{1+\exp(-z_{h_1})} = \frac{1}{1+exp(-w_1 * i_1 - w_2 * i_2 - b_1)}
+\end{equation}
+$$
+
+同理可得隐藏层 $h_2$ 的输出 $a_{h_2}$ 为
+
+$$
+\begin{equation}
+a_{h_1} = \frac{1}{1+\exp(-z_{h_1})} = \frac{1}{1+exp(-w_3 * i_1 - w_4 * i_2 - b_1)}
+\end{equation}
+$$
+
+在通过输出层就可以得到第一次前向传播的结果 $a_{o_1}, a_{o_2}$ 分别为
+
+$$
+\begin{equation}
+a_{o_1} = \frac{1}{1+exp(-w_5 * a_{h_1} - w_6 * a_{h_2} - b_2)}
+\end{equation}
+$$
+
+$$
+\begin{equation}
+a_{o_2} = \frac{1}{1+exp(-w_7 * a_{h_1} - w_8 * a_{h_2} - b_2)}
+\end{equation}
+$$
+
+#### 2) 计算损失函数
+
+得到输出结果，需要比较 $a_{o_1}, a_{o_2}$ 与真实值 $o_1, o_2$ 间的差距，这里用的是MSE。
+
+首先根据MSE(均方误差)可得
+
+$$
+\begin{equation}
+E_{total} = \sum_{i=1}^n \frac{1}{2}(a_{o_i}- o_i) ^ 2 = E_{o_1} + E_{o_2}
+\end{equation}
+$$
+
+而 $E_{o_1}，E_{o_2}$ 可以分别由MSE计算得到:
+
+$$
+\begin{equation}
+E_{o_1} = \frac{1}{2}(o_1-a_{o_1}) ^ 2
+\end{equation}
+$$
+
+$$
+\begin{equation}
+E_{o_2} = \frac{1}{2}(o_2-a_{o_2}) ^ 2
+\end{equation}
+$$
+
+得到传播结果和真实结果的误差后，需要进行BP来修正参数(基于 $E_{total}$)
+
+#### 3) 反向传播(输出-隐藏)
+
+要知道权重对于整体损失的影响，可以计算损失函数对权重的偏导，以权重 $w_5$ 为例:
+
+![neurou_bp](https://pic1.imgdb.cn/item/6390a02bb1fccdcd36a9058e.png)
+
+作用部分，可以分为在加权求和中的影响，在
+
+$$
+\begin{equation}
+\frac{\partial E_{tot}}{\partial w_5} = \frac{\partial z_{o_1}}{\partial w_5} \times  \frac{\partial a_{o_1}}{\partial z_{o_1}} \times \frac{\partial E_{tot}}{\partial a_{o_1}}
+\end{equation}
+$$
+
+Step.1对加权求和的作用为:
+
+$$
+\begin{equation}
+\frac{\partial z_{o_1}}{\partial w_5} = a_{h_1}
+\end{equation}
+$$
+
+根据sigmoid求导方法，得到Step.2对于激活函数的作用:
+
+$$
+\begin{equation}
+(\frac{1}{1+e^{-x}})' = \frac{e^{-x}}{(1+e^{-x})^2} =  \frac{1 + e^{-x} - 1}{(1+e^{-x})^2} = \frac{1}{1+e^{-x}}(1- \frac{1}{1+e^{-x}})
+\end{equation}
+$$
+
+$$
+\begin{equation}
+\frac{\partial a_{o_1}}{\partial z_{o_1}} = \frac{1}{1+\exp(-z_{o_1})} =z_{o_1}(1 - z_{o_1})  
+\end{equation}
+$$
+
+最后得到Step.3中对于损失函数的作用:
+
+$$
+\begin{equation}
+\frac{\partial E_{tot}}{\partial a_{o_1}} = (\frac{1}{2}(o_1-a_{o_1}) ^ 2)' = -(o_1 - a_{o_1})
+\end{equation}
+$$
+
+最后三者相乘可以得到:
+
+$$
+\begin{equation}
+\frac{\partial E_{tot}}{\partial w_5} =-(o_1-a_{o_1})\times z_{o_1}(1 - z_{o_1})\times a_{h_1}
+\end{equation}
+$$
+
+最后，根据学习率更新 $w_5$，可以得到:
+
+$$
+\begin{equation}
+w_5^+ = w_5 - \eta \frac{\partial E_{tot}}{\partial w_5}
+\end{equation}
+$$
+
+#### 4) 反向传播(隐藏-输入)
+
+优化输入层到隐藏层的权重，和之前的BP环节相同，但**这层的权重会同时对** $o_1, o_2$ 产生影响(但作用仅限**h1**这一个神经元)，原因如图:
+
+![ann_bp_w_1](https://pic.imgdb.cn/item/63915ebdb1fccdcd366f83e4.png)
+
+因此求偏导的公式可以写成:
+
+$$
+\begin{equation}
+\frac{\partial E_{tot}}{\partial w_1} = \frac{\partial(E_{o_1}+E_{o_2})}{\partial w_1}
+\end{equation}
+$$
+
+在根据之前作用的流图，拆解偏导方程可以得到:
+
+$$
+\begin{equation}
+\frac{\partial E_{tot}}{\partial w_1} = (\frac{\partial E_{o_1}}{\partial a_{h_1}} + \frac{\partial E_{o_2}}{\partial a_{h_1}}) \times \frac{\partial a_{h_1}}{\partial z_{h_1}} \times i_1
+\end{equation}
+$$
+
+又因为损失函数对隐藏层输出(**输出层的输入**)的偏导可以展开，得到:
+
+$$
+\begin{equation}
+\frac{\partial E_{o_1}}{\partial a_{h_1}} = \frac{\partial E_{o_1}}{\partial a_{o_1}} \times \frac{\partial a_{o_1}}{\partial z_{o_1}} \times w_5
+\end{equation}
+$$
+
+$$
+\begin{equation}
+\frac{\partial E_{o_2}}{\partial a_{h_2}} = \frac{\partial E_{o_2}}{\partial a_{o_2}} \times \frac{\partial a_{o_2}}{\partial z_{o_2}} \times w_6
+\end{equation}
+$$
+
+展开后的公式为:
+
+$$
+\begin{equation}
+\frac{\partial E_{tot}}{\partial w_1} = -((o_1-a_{o_1}) z_{o_1}(1 - z_{o_1})+(o_2-a_{o_2}) z_{o_2}(1 - z_{o_2}))\times z_{h_1}(1 - z_{h_1})\times i_1
+\end{equation}
+$$
+
+最后，根据学习率更新 $w_5$，可以得到:
+
+$$
+\begin{equation}
+w_1^+ = w_1 - \eta \frac{\partial E_{tot}}{\partial w_1}
+\end{equation}
+$$
+
+#### 5) 循环迭代
+
+反向传播算法就完成了，最后我们再把更新的权值重新计算，不停地迭代
